@@ -18,6 +18,8 @@ export const satisfiy = (pred: (char: string) => boolean): Parser<string, Nil> =
     return { err: nil }
 }
 
+export const anyChar = satisfiy(() => true)
+
 export const char = <const T extends string>(char: T) => satisfiy(c => c === char) as Parser<T, Nil>
 
 export const charIn = (chars: string) => satisfiy(ch => chars.includes(ch))
@@ -159,8 +161,31 @@ export const binaryOperator = <const Os extends string[], T, E>(
     }
 }
 
+export const until = <T>(
+    maybeTerminatorPred: (char: string) => boolean,
+    terminator: Parser<T>
+): Parser<[ string, T ], Err.ExpectTerminator> => input => {
+    let content = ''
+    while (input.length) {
+        const [ head ] = input, tail = input.slice(1)
+        if (maybeTerminatorPred(head)) {
+            const result = terminator(head)
+            if (isSuccess(result)) return {
+                val: [ content, result.val ],
+                rest: result.rest
+            }
+        }
+        content += head
+        input = tail
+    }
+    return {
+        err: Err.build('ExpectTerminator', { content })
+    }
+}
+
 export const P = {
     satisfiy,
+    anyChar,
     char,
     charIn,
     charMatch,
@@ -186,5 +211,6 @@ export const P = {
     surroundedByParen, surParen: surroundedByParen,
     digit,
     number,
-    binaryOperator, binOp: binaryOperator
+    binaryOperator, binOp: binaryOperator,
+    until
 }
