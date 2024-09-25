@@ -1,7 +1,7 @@
 {
   "name": "parsecond",
-  "version": "0.3.1",
-  "description": "",
+  "version": "0.3.3",
+  "description": "A simple TypeScript parser combinator library.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {

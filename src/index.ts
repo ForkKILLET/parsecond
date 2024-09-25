@@ -1,5 +1,5 @@
 import { Err } from './error'
-import { FilterOut, Head, Nil, nil } from './utils'
+import { nil, FilterOut, Head, NotNil, Nil, Filter, unreachable } from './utils'
 
 export type ParserResult<T = any, E = any> = 
     | { val: T, rest: string }
@@ -263,4 +263,9 @@ export const P = {
     until,
     followedBy,
     notFollowedBy
+}
+
+export {
+    unreachable, nil, Nil, NotNil, Err,
+    Head, Filter, FilterOut
 }
