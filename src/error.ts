@@ -27,6 +27,6 @@ export namespace Err {
         ...data
     }) as ErrMap[K]
 
-    export const is = <K extends keyof ErrMap>(errName: K, err: { type: any }): err is ErrMap[K] =>
-        err.type === types[errName]
+    export const is = <K extends keyof ErrMap>(errName: K, err: any): err is ErrMap[K] =>
+        err && typeof err === 'object' && err.type === types[errName]
 }

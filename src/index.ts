@@ -26,6 +26,15 @@ export const charIn = (chars: string) => satisfiy(ch => chars.includes(ch))
 
 export const charMatch = (regex: RegExp) => satisfiy(ch => regex.test(ch))
 
+export const charSequence = (str: string): Parser<string, Nil> => input => { // <=> join(sequence([ ...str ].map(char))) 
+    const { length } = str 
+    let index = 0
+    while (index < str.length)
+        if (input[index] === str[index]) index ++
+        else return { err: nil }
+    return { val: str, rest: input.slice(length) }
+}
+
 export const success = <T>(val: T): Parser<T, never> => input => ({ val, rest: input })
 
 export const fail = <E>(err: E): Parser<never, E> => () => ({ err })
@@ -101,6 +110,12 @@ export const sequence = <const Ps extends Parser[]>(parsers: Ps): Parser<
 
 export const ignore = <E>(parser: Parser<any, E>): Parser<Nil, E> => map(parser, () => nil)
 
+export const left = <T, E1, E2>(left: Parser<T, E1>, right: Parser<any, E2>): Parser<T, E1 | E2> =>
+    then(left, val => map(right, () => val))
+
+export const right = <T, E1, E2>(left: Parser<any, E1>, right: Parser<T, E2>): Parser<T, E1 | E2> =>
+    then(left, () => right)
+
 export const filteredSequence = <const Ps extends Parser[]>(parsers: Ps) =>
     map(sequence(parsers), vals => vals.filter((val) => val !== nil)) as Parser<
         FilterOut<{ [I in keyof Ps]: Sucess<Ps[I]> }, Nil>,
@@ -134,46 +149,61 @@ export const digit = charIn(DIGIT_CHARS)
 
 export const number = map(some(digit), chars => Number(chars.join('')))
 
-export type BinaryOp<Os extends string[], T> = {
-    op: Os[number]
-    lhs: T | BinaryOp<Os, T>
-    rhs: T | BinaryOp<Os, T>
-}
+export type BinaryOp<Os extends string[], T, A extends 'left' | 'right' | 'none'> = 
+    A extends 'left' ? {
+        op: Os[number]
+        lhs: T | BinaryOp<Os, T, 'left'>
+        rhs: T
+    } :
+    A extends 'right' ? {
+        op: Os[number]
+        lhs: T
+        rhs: T | BinaryOp<Os, T, 'right'>
+    } :
+    A extends 'none' ? {
+        op: Os[number]
+        operands: T[]
+    } :
+    never
 
-export const binaryOperator = <const Os extends string[], T, E>(
-    ops: Os, asscociativity: 'left' | 'right', base: Parser<T, E>
-): Parser<T | BinaryOp<Os, T>, E | Nil> => {
-    const symbol = surroundedByWhite(alternative(ops.map(char)))
+export const binaryOperator = <const Os extends string[], T, E, A extends 'left' | 'right' | 'none'>(
+    ops: Os,
+    base: Parser<T, E>,
+    asscociativity: A,
+    symbolChars = '',
+): Parser<T | BinaryOp<Os, T, A>, E | Nil> => {
+    type R = Parser<T | BinaryOp<Os, T, A>, E | Nil>
+
+    const symbol = surroundedByWhite(alternative(
+        ops.map(op => notFollowedBy(charSequence(op), charIn(symbolChars)))
+    ))
     if (asscociativity === 'left') {
         return map(sequence([
             base,
             many(sequence([ symbol, base ]))
         ]), ([ head, tail ]) => tail
-            .reduce<T | BinaryOp<Os, T>>((lhs, [ op, rhs ]) => ({ lhs, op, rhs }), head)
-        )
+            .reduce<T | BinaryOp<Os, T, 'left'>>((lhs, [ op, rhs ]) => ({ lhs, op, rhs }), head)
+        ) as R
     }
-    else {
-        const op: Parser<T | BinaryOp<Os, T>, E | Nil> = lazy(() => alternative([
+    else if (asscociativity === 'right') {
+        const op: Parser<T | BinaryOp<Os, T, 'right'>, E | Nil> = lazy(() => alternative([
             map(sequence([ base, symbol, op ]), ([ lhs, op, rhs ]) => ({ lhs, op, rhs })),
             base
         ]))
-        return op
+        return op as R
     }
 }
 
 export const until = <T>(
-    maybeTerminatorPred: (char: string) => boolean,
     terminator: Parser<T>
 ): Parser<[ string, T ], Err.ExpectTerminator> => input => {
     let content = ''
     while (input.length) {
         const [ head ] = input, tail = input.slice(1)
-        if (maybeTerminatorPred(head)) {
-            const result = terminator(head)
-            if (isSuccess(result)) return {
-                val: [ content, result.val ],
-                rest: result.rest
-            }
+        const result = terminator(input)
+        if (isSuccess(result)) return {
+            val: [ content, result.val ],
+            rest: result.rest
         }
         content += head
         input = tail
@@ -183,12 +213,27 @@ export const until = <T>(
     }
 }
 
+export const followedBy = <T, E1, E2>(parser: Parser<T, E1>, follower: Parser<any, E2>): Parser<T, E1 | E2> =>
+    then(parser, val => input => {
+        const result = follower(input)
+        if (isSuccess(result)) return { val, rest: input }
+        return result
+    })
+
+export const notFollowedBy = <T, E>(parser: Parser<T, E>, follower: Parser): Parser<T, E | Nil> =>
+    then(parser, val => input => {
+        const result = follower(input)
+        if (isSuccess(result)) return { err: nil } as const
+        return { val, rest: input }
+    })
+
 export const P = {
     satisfiy,
     anyChar,
     char,
     charIn,
     charMatch,
+    charSequence, str: charSequence,
     success, return: success,
     fail,
     map,
@@ -201,6 +246,8 @@ export const P = {
     many,
     sequence, seq: sequence,
     ignore,
+    left,
+    right,
     filteredSequence, fseq: filteredSequence,
     head,
     lazy,
@@ -212,5 +259,7 @@ export const P = {
     digit,
     number,
     binaryOperator, binOp: binaryOperator,
-    until
+    until,
+    followedBy,
+    notFollowedBy
 }

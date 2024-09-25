@@ -1,6 +1,6 @@
 {
   "name": "parsecond",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -16,6 +16,7 @@
     "@types/mocha": "^10.0.8",
     "@types/node": "^22.5.5",
     "chai": "^5.1.1",
+    "dedent": "^1.5.3",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2"
   },
