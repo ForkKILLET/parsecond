@@ -137,10 +137,23 @@ describe('Combinator tests', () => {
         itRun('abc; def;;', a => a.to.deep.equal({ val: [ 'abc; def', ';;' ], rest: '' }))
         itRun('abc;', a => a.toFail)
     })
+
+    describe(`eoi`, () => {
+        const { itRun } = testParser(P.eoi)
+        itRun('', a => a.toSuceed)
+        itRun('a', a => a.toFail)
+    })
+
+    describe(`ended(join(many(char('a'))))`, () => {
+        const { itRun } = testParser(P.ended(P.join(P.many(P.char('a')))))
+        itRun('', a => a.toSuceed.and.to.equal(''))
+        itRun('aaa', a => a.toSuceed.and.to.equal('aaa'))
+        itRun('aaab', a => a.toFail)
+    })
 })
 
 describe('Expression calculator tests', () => {
-    const { expectRun } = testParser(P.mapErr(P.end(exprCalculator), err => {
+    const { expectRun } = testParser(P.mapErr(P.ended(exprCalculator), err => {
         if (Err.is('ExpectEnd', err)) return `Expect end of input, got '${err.rest}'`
     }))
     const itEval = (exprStr: string) => {

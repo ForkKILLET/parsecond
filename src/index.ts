@@ -126,13 +126,12 @@ export const head = <Ts extends any[], E>(parser: Parser<Ts, E>): Parser<Head<Ts
 
 export const lazy = <T, E>(builder: () => Parser<T, E>): Parser<T, E> => input => builder()(input)
 
-export const endOfInput = <T, E>(parser: Parser<T, E>): Parser<T, E | Err.ExpectEnd> => input => {
-    const result = parser(input)
-    if (isSuccess(result) && result.rest) return {
-        err: Err.build('ExpectEnd', { rest: result.rest })
-    }
-    return result
+export const endOfInput: Parser<Nil, Err.ExpectEnd> = input => {
+    if (! input) return { val: nil, rest: '' }
+    return { err: Err.build('ExpectEnd', { rest: input }) }
 }
+
+export const ended = <T, E>(parser: Parser<T, E>): Parser<T, E | Err.ExpectEnd> => head(sequence([ parser, endOfInput ]))
 
 const WHITE_CHARS = ' \t\r\n'
 export const white = charIn(WHITE_CHARS)
@@ -228,6 +227,8 @@ export const notFollowedBy = <T, E>(parser: Parser<T, E>, follower: Parser): Par
         return { val, rest: input }
     })
 
+
+
 export const P = {
     satisfiy,
     anyChar,
@@ -252,7 +253,8 @@ export const P = {
     filteredSequence, fseq: filteredSequence,
     head,
     lazy,
-    endOfInput, end: endOfInput,
+    endOfInput, eoi: endOfInput,
+    ended,
     white,
     surrroundedBy, sur: surrroundedBy,
     surroundedByWhite, surWhite: surroundedByWhite,
