@@ -198,7 +198,9 @@ export const until = <T>(
     terminator: Parser<T>
 ): Parser<[ string, T ], Err.ExpectTerminator> => input => {
     let content = ''
-    while (input.length) {
+    let isEoi = false
+    while (input.length || ! isEoi) {
+        if (! input.length) isEoi = true
         const [ head ] = input, tail = input.slice(1)
         const result = terminator(input)
         if (isSuccess(result)) return {

@@ -3,7 +3,7 @@
 import { expect } from 'chai'
 import dedent from 'dedent'
 import { exprCalculator } from './expr'
-import { P, isSuccess, Parser } from '../src'
+import { P, isSuccess, Parser, nil } from '../src'
 import { Err } from '../src/error'
 
 const testParser = (parser: Parser) => {
@@ -136,6 +136,12 @@ describe('Combinator tests', () => {
         itRun('abc;;', a => a.to.deep.equal({ val: [ 'abc', ';;' ], rest: ';;' }))
         itRun('abc; def;; ghi', a => a.to.deep.equal({ val: [ 'abc; def', ';;' ], rest: ';; ghi' }))
         itRun('abc;', a => a.toFail)
+    })
+
+    describe(`until(alt([ char(';'), eoi ]))`, () => {
+        const { itRun } = testParser(P.until(P.alt([ P.char(';'), P.eoi ])))
+        itRun('abc; def', a => a.to.deep.equal({ val: [ 'abc', ';' ], rest: '; def' }))
+        itRun('abc def', a => a.to.deep.equal({ val: [ 'abc def', nil ], rest: '' }))
     })
 
     describe(`eoi`, () => {
