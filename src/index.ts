@@ -149,30 +149,31 @@ export const digit = charIn(DIGIT_CHARS)
 
 export const number = map(some(digit), chars => Number(chars.join('')))
 
-export type BinaryOp<Os extends string[], T, A extends 'left' | 'right' | 'none'> = 
+export type BinaryOp<Os extends string[], T, A extends 'left' | 'right' | 'none'> = (
     A extends 'left' ? {
         op: Os[number]
-        lhs: T | BinaryOp<Os, T, 'left'>
+        lhs: BinaryOp<Os, T, 'left'>
         rhs: T
     } :
     A extends 'right' ? {
         op: Os[number]
         lhs: T
-        rhs: T | BinaryOp<Os, T, 'right'>
+        rhs: BinaryOp<Os, T, 'right'>
     } :
     A extends 'none' ? {
         op: Os[number]
         operands: T[]
     } :
     never
+) | T
 
 export const binaryOperator = <const Os extends string[], T, E, A extends 'left' | 'right' | 'none'>(
     ops: Os,
     base: Parser<T, E>,
     asscociativity: A,
     symbolChars = '',
-): Parser<T | BinaryOp<Os, T, A>, E | Nil> => {
-    type R = Parser<T | BinaryOp<Os, T, A>, E | Nil>
+): Parser<BinaryOp<Os, T, A>, E | Nil> => {
+    type R = Parser<BinaryOp<Os, T, A>, E | Nil>
 
     const symbol = surroundedByWhite(alternative(
         ops.map(op => notFollowedBy(charSequence(op), charIn(symbolChars)))
@@ -182,11 +183,11 @@ export const binaryOperator = <const Os extends string[], T, E, A extends 'left'
             base,
             many(sequence([ symbol, base ]))
         ]), ([ head, tail ]) => tail
-            .reduce<T | BinaryOp<Os, T, 'left'>>((lhs, [ op, rhs ]) => ({ lhs, op, rhs }), head)
+            .reduce<BinaryOp<Os, T, 'left'>>((lhs, [ op, rhs ]) => ({ lhs, op, rhs }), head)
         ) as R
     }
     else if (asscociativity === 'right') {
-        const op: Parser<T | BinaryOp<Os, T, 'right'>, E | Nil> = lazy(() => alternative([
+        const op: Parser<BinaryOp<Os, T, 'right'>, E | Nil> = lazy(() => alternative([
             map(sequence([ base, symbol, op ]), ([ lhs, op, rhs ]) => ({ lhs, op, rhs })),
             base
         ]))
