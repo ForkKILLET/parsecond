@@ -133,8 +133,8 @@ describe('Combinator tests', () => {
 
     describe(`until(str(';;'))`, () => {
         const { itRun } = testParser(P.until(P.str(';;')))
-        itRun('abc;;', a => a.to.deep.equal({ val: [ 'abc', ';;' ], rest: '' }))
-        itRun('abc; def;;', a => a.to.deep.equal({ val: [ 'abc; def', ';;' ], rest: '' }))
+        itRun('abc;;', a => a.to.deep.equal({ val: [ 'abc', ';;' ], rest: ';;' }))
+        itRun('abc; def;; ghi', a => a.to.deep.equal({ val: [ 'abc; def', ';;' ], rest: ';; ghi' }))
         itRun('abc;', a => a.toFail)
     })
 

@@ -203,7 +203,7 @@ export const until = <T>(
         const result = terminator(input)
         if (isSuccess(result)) return {
             val: [ content, result.val ],
-            rest: result.rest
+            rest: input
         }
         content += head
         input = tail
