@@ -156,6 +156,18 @@ describe('Combinator tests', () => {
         itRun('aaa', a => a.toSuceed.and.to.equal('aaa'))
         itRun('aaab', a => a.toFail)
     })
+
+    describe(`many(notEmpty(alt([ char(','), head(until(alt([ eoi, char(',') ]))) ])))`, () => {
+        const { itRun } = testParser(
+            P.many(P.notEmpty(
+                P.alt([
+                    P.char(','),
+                    P.head(P.until(P.alt([ P.eoi, P.char(',') ])))
+                ])
+            ))
+        )
+        itRun('x,y,z', a => a.toSuceed.and.to.deep.equal([ 'x', ',', 'y', ',', 'z' ]))
+    })
 })
 
 describe('Expression calculator tests', () => {

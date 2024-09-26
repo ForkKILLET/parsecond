@@ -14,7 +14,7 @@ export const createParserRepl = (parser: Parser, {
     requireEndOfInput = true,
     name = ''
 }: ReplOptions = {}) => {
-    if (requireEndOfInput) parser = P.mapErr(P.end(parser), err => {
+    if (requireEndOfInput) parser = P.mapErr(P.ended(parser), err => {
         if (Err.is('ExpectEnd', err)) return `Expect end of input, got '${err.rest}'.`
         return err
     })

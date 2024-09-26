@@ -229,7 +229,8 @@ export const notFollowedBy = <T, E>(parser: Parser<T, E>, follower: Parser): Par
         return { val, rest: input }
     })
 
-
+export const notEmpty = <T extends string, E>(parser: Parser<T, E>): Parser<T, E | Nil> =>
+    then(parser, s => s ? success(s) : fail(nil))
 
 export const P = {
     satisfiy,
@@ -266,7 +267,8 @@ export const P = {
     binaryOperator, binOp: binaryOperator,
     until,
     followedBy,
-    notFollowedBy
+    notFollowedBy,
+    notEmpty
 }
 
 export {
