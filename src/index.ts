@@ -7,7 +7,7 @@ export type ParserResult<T = any, E = any> =
 
 export type Parser<T = any, E = any> = (input: string) => ParserResult<T, E>
 
-export type Sucess<P extends Parser> = Exclude<ReturnType<P>, { err: any }> extends { val: infer T } ? T : never
+export type Success<P extends Parser> = Exclude<ReturnType<P>, { err: any }> extends { val: infer T } ? T : never
 export type Failure<P extends Parser> = Exclude<ReturnType<P>, { val: any }> extends { err: infer E } ? E : never
 
 export const isSuccess = (parserResult: ParserResult<any>) => 'val' in parserResult
@@ -57,7 +57,7 @@ export const separatedBy = <T, E>(base: Parser<T, E>, separator: Parser): Parser
         ([ head, tail ]) => [ head, ...tail ]
     )
 
-export const alternative = <Ps extends Parser[]>(parsers: Ps): Parser<Sucess<Ps[number]>, Nil> => input => {
+export const alternative = <Ps extends Parser[]>(parsers: Ps): Parser<Success<Ps[number]>, Nil> => input => {
     for (const parser of parsers) {
         const result = parser(input)
         if (isSuccess(result)) return result
@@ -65,7 +65,7 @@ export const alternative = <Ps extends Parser[]>(parsers: Ps): Parser<Sucess<Ps[
     return { err: nil }
 }
 
-export const then = <T, E, N extends Parser>(parser: Parser<T, E>, next: (val: T) => N): Parser<Sucess<N>, E | Failure<N>> => input => {
+export const then = <T, E, N extends Parser>(parser: Parser<T, E>, next: (val: T) => N): Parser<Success<N>, E | Failure<N>> => input => {
     const result = parser(input)
     if (isSuccess(result)) return next(result.val)(result.rest)
     return result
@@ -95,10 +95,10 @@ export const many = <T>(parser: Parser<T>): Parser<T[], never> => input => {
 }
 
 export const sequence = <const Ps extends Parser[]>(parsers: Ps): Parser<
-    { [I in keyof Ps]: Sucess<Ps[I]> },
+    { [I in keyof Ps]: Success<Ps[I]> },
     Failure<Ps[number]>
 > => input => {
-    const vals = [] as { [I in keyof Ps]: Sucess<Ps[I]> }
+    const vals = [] as { [I in keyof Ps]: Success<Ps[I]> }
     for (const parser of parsers) {
         const result = parser(input)
         if (! isSuccess(result)) return result
@@ -118,7 +118,7 @@ export const right = <T, E1, E2>(left: Parser<any, E1>, right: Parser<T, E2>): P
 
 export const filteredSequence = <const Ps extends Parser[]>(parsers: Ps) =>
     map(sequence(parsers), vals => vals.filter((val) => val !== nil)) as Parser<
-        FilterOut<{ [I in keyof Ps]: Sucess<Ps[I]> }, Nil>,
+        FilterOut<{ [I in keyof Ps]: Success<Ps[I]> }, Nil>,
         Failure<Ps[number]>
     >
 
@@ -148,7 +148,7 @@ export const digit = charIn(DIGIT_CHARS)
 
 export const number = map(some(digit), chars => Number(chars.join('')))
 
-export type BinaryOp<Os extends string[], T, A extends 'left' | 'right' | 'none'> = (
+export type BinaryOp<Os extends string[], T, A extends 'left' | 'right'> = (
     A extends 'left' ? {
         op: Os[number]
         lhs: BinaryOp<Os, T, 'left'>
@@ -159,21 +159,17 @@ export type BinaryOp<Os extends string[], T, A extends 'left' | 'right' | 'none'
         lhs: T
         rhs: BinaryOp<Os, T, 'right'>
     } :
-    A extends 'none' ? {
-        op: Os[number]
-        operands: T[]
-    } :
     never
 ) | T
 
-export const binaryOperator = <const Os extends string[], T, E, A extends 'left' | 'right' | 'none'>(
+export const binaryOperator = <const Os extends string[], T, E, A extends 'left' | 'right'>(
     ops: Os,
     base: Parser<T, E>,
     asscociativity: A,
-    symbolChars = '',
 ): Parser<BinaryOp<Os, T, A>, E | Nil> => {
     type R = Parser<BinaryOp<Os, T, A>, E | Nil>
 
+    const symbolChars = [ ...new Set(ops.join('')) ].join('')
     const symbol = surroundedByWhite(alternative(
         ops.map(op => notFollowedBy(charSequence(op), charIn(symbolChars)))
     ))

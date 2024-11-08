@@ -10,10 +10,9 @@ export type Expr = {
 }
 
 export const expr: Parser<number | Expr, Nil | Err.ExpectEnd> = P.lazy(() => {
-    const symbolChars = '+-*/' 
-    const powOp = P.binOp([ '**' ], P.alt([ P.number, P.surParen(expr) ]), 'right', symbolChars)
-    const mulOp = P.binOp([ '*', '/' ], P.alt([ powOp, P.surParen(expr) ]), 'left', symbolChars)
-    const addOp = P.binOp([ '+', '-' ], P.alt([ mulOp, P.surParen(expr) ]), 'left', symbolChars)
+    const powOp = P.binOp([ '**' ], P.alt([ P.number, P.surParen(expr) ]), 'right')
+    const mulOp = P.binOp([ '*', '/' ], P.alt([ powOp, P.surParen(expr) ]), 'left')
+    const addOp = P.binOp([ '+', '-' ], P.alt([ mulOp, P.surParen(expr) ]), 'left')
     return addOp
 })
 
