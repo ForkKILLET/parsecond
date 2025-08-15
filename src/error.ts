@@ -1,32 +1,22 @@
-const ExpectEnd = Symbol('ExpectEnd')
-const ExpectTerminator = Symbol('ExpectTerminator')
+import { ValueOf } from './utils'
 
-export namespace Err {
-    export type ExpectEnd = {
-        type: typeof ExpectEnd
-        rest: string
-    }
-
-    export type ExpectTerminator = {
-        type: typeof ExpectTerminator
-        content: string
-    }
-    
-    export const types = {
-        ExpectEnd,
-        ExpectTerminator
-    } as const
-
-    export interface ErrMap {
-        ExpectEnd: ExpectEnd,
-        ExpectTerminator: ExpectTerminator
-    }
-
-    export const build = <K extends keyof ErrMap>(errName: K, data: Omit<ErrMap[K], 'type'>) => ({
-        type: types[errName],
-        ...data
-    }) as ErrMap[K]
-
-    export const is = <K extends keyof ErrMap>(errName: K, err: any): err is ErrMap[K] =>
-        err && typeof err === 'object' && err.type === types[errName]
+export interface ParseErrMap {
+  ExpectEnd: { rest: string }
+  ExpectTerminator: { content: string }
 }
+
+export type ParseErrType = keyof ParseErrMap
+
+export const kParseErr: unique symbol = Symbol('ParseErr')
+
+export type ParseErr<Ks extends ParseErrType = ParseErrType> = ValueOf<{
+  [K in Ks]: { type: K, [kParseErr]: true } & ParseErrMap[K]
+}>
+
+export const ParseErr = <K extends ParseErrType>(type: K, data: ParseErrMap[K]) => ({
+  type,
+  [kParseErr]: true as const,
+  ...data,
+})
+
+export const isParseErr = (err: any): err is ParseErr => err?.[kParseErr] === true

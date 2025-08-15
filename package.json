@@ -1,27 +1,33 @@
 {
   "name": "parsecond",
-  "version": "0.6.0",
-  "description": "A simple TypeScript parser combinator library.",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "scripts": {
-    "test": "mocha --import=tsx --extension ts",
-	"prepublish": "pnpm test && pnpm build",
-    "build": "tsc"
+  "version": "0.7.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib build --watch",
+    "test": "vitest run",
+    "test:dev": "vitest"
+  },
   "devDependencies": {
-    "@types/chai": "^4.3.19",
-    "@types/mocha": "^10.0.8",
-    "@types/node": "^22.5.5",
-    "chai": "^5.1.1",
-    "dedent": "^1.5.3",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.2"
+    "@rslib/core": "^0.12.2",
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
-    "mocha": "^10.7.3"
+    "fk-result": "^0.1.0",
+    "typescript-result": "^3.5.2"
   }
 }

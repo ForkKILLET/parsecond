@@ -1,0 +1,2 @@
+overrides:
+  fk-result: link:../../.local/share/pnpm/global/5/node_modules/fk-result

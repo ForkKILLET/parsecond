@@ -1,4 +1,14 @@
-node_modules/
-pnpm-lock.yaml
-lib/
-tsconfig.tsbuildinfo
+# Local
+.DS_Store
+*.local
+*.log*
+
+# Dist
+node_modules
+dist/
+storybook-static
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
