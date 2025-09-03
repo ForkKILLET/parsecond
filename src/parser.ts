@@ -61,7 +61,7 @@ export const pure = <T>(val: T): Parser<T, never> => state => Ok({ val, state })
 export const fail = <E>(err: E): Parser<never, E> => () => Err(err)
 export const result = <T, E>(result: Result<T, E>): Parser<T, E> => state => result.map(val => ({ val, state }))
 
-export const guard = <T, E, E1>(parser: Parser<T, E>, pred: (val: T) => boolean): Parser<T, E | null> =>
+export const guard = <T, E>(parser: Parser<T, E>, pred: (val: T) => boolean): Parser<T, E | null> =>
   bind(parser, val => result(pred(val) ? Ok(val) : Err(null)))
 
 export const map = <T0, T1, E>(parser: Parser<T0, E>, fn: (val: T0) => T1): Parser<T1, E> => input =>
@@ -144,6 +144,8 @@ export const delimitedBy = <EL, ER>(left: Parser<any, EL>, right: Parser<any, ER
   map(sequence([left, parser, right]), ([, result]) => result)
 
 export const spaced = delimitedBy(many(white), many(white))
+export const spacedBefore = <T, E>(parser: Parser<T, E>): Parser<T, E> => right(many(white), parser)
+export const spacedAfter = <T, E>(parser: Parser<T, E>): Parser<T, E> => left(parser, many(white))
 
 export const parens = delimitedBy(char('('), char(')'))
 export const brackets = delimitedBy(char('['), char(']'))
@@ -257,6 +259,8 @@ export const p = {
   white,
   delimitedBy,
   spaced,
+  spacedBefore,
+  spacedAfter,
   parens,
   brackets,
   braces,
