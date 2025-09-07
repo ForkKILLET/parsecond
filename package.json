@@ -1,6 +1,6 @@
 {
   "name": "parsecond",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "exports": {
     ".": {
@@ -27,7 +27,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "fk-result": "^0.1.0",
+    "fk-result": "^0.2.0",
     "typescript-result": "^3.5.2"
   }
 }
