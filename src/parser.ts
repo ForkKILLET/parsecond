@@ -4,22 +4,23 @@ import { Result, InferVal, InferErr, Ok, Err } from 'fk-result'
 
 void kParseErr
 
-export type ParserState = {
+export interface ParserState {
   input: string
   index: number
   rest: string
 }
-export type ParserResult<T = any, E = any> = Result<{ val: T, state: ParserState }, E>
+export type ParserStateVal<T> = { val: T, state: ParserState }
+export type ParserResult<T = any, E = any> = Result<ParserStateVal<T>, E>
 
 export type Parser<T = any, E = unknown> = (state: ParserState) => ParserResult<T, E>
 
 export type ParserOk<P extends Parser> = InferVal<ReturnType<P>>['val']
 export type ParserErr<P extends Parser> = InferErr<ReturnType<P>>
 
-export const eat = ({ input, index, rest }: ParserState, length: number): ParserState => ({
-  input,
-  index: index + length,
-  rest: rest.slice(length),
+export const eat = (state: ParserState, length: number): ParserState => ({
+  ...state,
+  index: state.index + length,
+  rest: state.rest.slice(length),
 })
 
 export interface Satisfy {
@@ -70,6 +71,9 @@ export const map = <T0, T1, E>(parser: Parser<T0, E>, fn: (val: T0) => T1): Pars
 export const mapErr = <T, E0, E1>(parser: Parser<T, E0>, fn: (err: E0) => E1): Parser<T, E1> => input =>
   parser(input).mapErr(fn)
 
+export const mapState = <T, E>(parser: Parser<T, E>, fn: (val: ParserState) => ParserState): Parser<T, E> => input =>
+  parser(input).map(({ val, state }) => ({ val, state: fn(state) }))
+
 export const join = <E>(parser: Parser<string[], E>) => map(parser, (val) => val.join(''))
 
 export const separatedBy = <T, E>(base: Parser<T, E>, separator: Parser): Parser<T[], E> =>
@@ -91,6 +95,12 @@ export const bind = <T, E, Tn, En>(parser: Parser<T, E>, next: (val: T) => Parse
 
 export const bindErr = <T, E, Tn, En>(parser: Parser<T, E>, next: (err: E) => Parser<Tn, En>): Parser<T | Tn, En> => state =>
   parser(state).bindErr(err => next(err)(state))
+
+export const bindValState = <T, E, Tn, En>(
+  parser: Parser<T, E>,
+  next: (valState: { val: T, state: ParserState },
+) => Parser<Tn, En>): Parser<Tn, E | En> =>
+  state => parser(state).bind(({ val, state }) => next({ val, state })(state))
 
 export const optional = <T, E>(parser: Parser<T, E>): Parser<T | null, never> => state =>
   parser(state).bindErr(() => Ok({ val: null, state }))
@@ -120,10 +130,10 @@ export const sequence = <const Ps extends Parser[]>(parsers: Ps): Parser<
 
 export const skip = <E>(parser: Parser<any, E>): Parser<null, E> => map(parser, () => null)
 
-export const left = <T, E1, E2>(left: Parser<T, E1>, right: Parser<any, E2>): Parser<T, E1 | E2> =>
+export const left = <E2>(right: Parser<any, E2>) => <T, E1>(left: Parser<T, E1>): Parser<T, E1 | E2> =>
   bind(left, val => map(right, () => val))
 
-export const right = <T, E1, E2>(left: Parser<any, E1>, right: Parser<T, E2>): Parser<T, E1 | E2> =>
+export const right = <E1>(left: Parser<any, E1>) => <T, E2>(right: Parser<T, E2>): Parser<T, E1 | E2> =>
   bind(left, () => right)
 
 export const head = <Ts extends any[], E>(parser: Parser<Ts, E>): Parser<Head<Ts>, E> => map(parser, ([h]) => h)
@@ -144,8 +154,6 @@ export const delimitedBy = <EL, ER>(left: Parser<any, EL>, right: Parser<any, ER
   map(sequence([left, parser, right]), ([, result]) => result)
 
 export const spaced = delimitedBy(many(white), many(white))
-export const spacedBefore = <T, E>(parser: Parser<T, E>): Parser<T, E> => right(many(white), parser)
-export const spacedAfter = <T, E>(parser: Parser<T, E>): Parser<T, E> => left(parser, many(white))
 
 export const parens = delimitedBy(char('('), char(')'))
 export const brackets = delimitedBy(char('['), char(']'))
@@ -197,10 +205,22 @@ export namespace Range {
     end: range.end,
   })
 
-  export const between = (start: Range, end: Range): Range => ({
+  export const outer = (start: Range, end: Range): Range => ({
     input: start.input,
     start: start.start,
     end: end.end,
+  })
+
+  export const inner = (start: Range, end: Range): Range => ({
+    input: start.input,
+    start: start.end,
+    end: end.start,
+  })
+
+  export const empty = (): Range => ({
+    input: '',
+    start: 1,
+    end: 0,
   })
 }
 
@@ -239,12 +259,11 @@ export const p = {
   fail,
   result,
   guard,
-  map,
-  mapErr,
+  map, mapErr, mapState,
   join,
   separatedBy, sep: separatedBy,
   alternative, alt: alternative,
-  bind, then: bind,
+  bind, bindErr, bindValState,
   optional, opt: optional,
   some,
   many,
@@ -259,8 +278,6 @@ export const p = {
   white,
   delimitedBy,
   spaced,
-  spacedBefore,
-  spacedAfter,
   parens,
   brackets,
   braces,
