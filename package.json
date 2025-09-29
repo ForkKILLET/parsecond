@@ -1,6 +1,6 @@
 {
   "name": "parsecond",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "type": "module",
   "exports": {
     ".": {
@@ -22,12 +22,11 @@
   },
   "devDependencies": {
     "@rslib/core": "^0.12.2",
-    "@types/node": "^22.18.0",
+    "@types/node": "^22.18.6",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "fk-result": "^0.2.0",
-    "typescript-result": "^3.5.2"
+    "fk-result": "^0.4.0"
   }
 }
