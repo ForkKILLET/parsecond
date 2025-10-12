@@ -82,6 +82,12 @@ export const separatedBy = <T, E>(base: Parser<T, E>, separator: Parser): Parser
     ([head, tail]) => [head, ...tail]
   )
 
+export const separatedBy1 = <T, E0, E1>(base: Parser<T, E0>, separator: Parser<any, E1>): Parser<T[], E0 | E1> =>
+  map(
+    sequence([base, some(map(sequence([separator, base]), ([, val]) => val))]),
+    ([head, tail]) => [head, ...tail]
+  )
+
 export const alternative = <Ps extends Parser[]>(parsers: Ps): Parser<ParserOk<Ps[number]>, null> => input => {
   for (const parser of parsers) {
     const result = parser(input)
@@ -105,7 +111,7 @@ export const bindValState = <T, E, Tn, En>(
 export const optional = <T, E>(parser: Parser<T, E>): Parser<T | null, never> => state =>
   parser(state).bindErr(() => Ok({ val: null, state }))
 
-export const some = <T, E>(parser: Parser<T, E>): Parser<T[], E | null> =>
+export const some = <T, E>(parser: Parser<T, E>): Parser<T[], E> =>
   bind(parser, val => map(many(parser), vals => [val, ...vals]))
 
 export const many = <T>(parser: Parser<T>): Parser<T[], never> =>
@@ -262,6 +268,7 @@ export const p = {
   map, mapErr, mapState,
   join,
   separatedBy, sep: separatedBy,
+  separatedBy1, sep1: separatedBy1,
   alternative, alt: alternative,
   bind, bindErr, bindValState,
   optional, opt: optional,
