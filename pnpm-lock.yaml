@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       fk-result:
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@rslib/core':
         specifier: ^0.12.2
@@ -709,8 +709,8 @@ packages:
       picomatch:
         optional: true
 
-  fk-result@0.4.0:
-    resolution: {integrity: sha512-lFcRWHSmru+HSRZzbg4d8nfSnxh3dS+GPQ3BEccg7r9XcmmpBXJRgUe7QfGnBXk5FhpgcglQxUbx/jqM7aBT2A==}
+  fk-result@0.5.0:
+    resolution: {integrity: sha512-ObrFnrNAkFw6b6jgpkQ/y1vgEDDwpWLLyKSaERblbr8qbZunERdQcKrtYZKTt+f6lF+wNqrASRD/zJ441xF5Tw==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -1454,7 +1454,7 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.3
 
-  fk-result@0.4.0: {}
+  fk-result@0.5.0: {}
 
   fsevents@2.3.3:
     optional: true

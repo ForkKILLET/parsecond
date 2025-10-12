@@ -12,4 +12,4 @@ export default defineConfig({
       syntax: ['node 18'],
     },
   ],
-});
+})
