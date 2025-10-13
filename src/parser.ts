@@ -82,7 +82,10 @@ export const separatedBy = <T, E>(base: Parser<T, E>, separator: Parser): Parser
     ([head, tail]) => [head, ...tail]
   )
 
-export const separatedBy1 = <T, E0, E1>(base: Parser<T, E0>, separator: Parser<any, E1>): Parser<T[], E0 | E1> =>
+export const separatedBy0 = <T, E>(base: Parser<T, E>, separator: Parser): Parser<T[], null> =>
+  alternative([separatedBy(base, separator), pure([])])
+
+export const separatedBy2 = <T, E0, E1>(base: Parser<T, E0>, separator: Parser<any, E1>): Parser<T[], E0 | E1> =>
   map(
     sequence([base, some(map(sequence([separator, base]), ([, val]) => val))]),
     ([head, tail]) => [head, ...tail]
@@ -268,7 +271,9 @@ export const p = {
   map, mapErr, mapState,
   join,
   separatedBy, sep: separatedBy,
-  separatedBy1, sep1: separatedBy1,
+  separatedBy0: separatedBy0, sep0: separatedBy0,
+  separatedBy1: separatedBy, sep1: separatedBy,
+  separatedBy2: separatedBy2, sep2: separatedBy2,
   alternative, alt: alternative,
   bind, bindErr, bindValState,
   optional, opt: optional,
