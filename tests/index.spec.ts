@@ -1,38 +1,31 @@
 import { expect, describe, it, Assertion } from 'vitest'
-import { isSuccess, p, Parser } from '../src/index'
-
-import { Err } from '../src/error'
-import { exprCalculator } from './expr'
+import { p, Parser } from '../src/index'
 
 const testParser = (parser: Parser) => {
   const tester = {
     expectRun: (input: string) => {
-      const result = parser(input)
+      const result = parser({ input, index: 0, rest: input })
       return {
-        get to() {
-          return expect(result)
+        get ok() {
+          if (! result.isOk) throw `Expect ok, got err: ${String(result.err)}`
+          return expect(result.val.val)
         },
-        get toSuceed() {
-          if (! isSuccess(result)) throw `Expect success, got failure: ${String(result.err)}`
-          return expect(result.val)
-        },
-        get toFail() {
-          if (isSuccess(result)) throw `Expect failure, got success: ${String(result.val)}`
+        get err() {
+          if (! result.isErr) throw `Expect err, got ok: ${String(result.val)}`
           return expect(result.err)
         }
       }
     },
     itRun: (input: string, fn: (assertion: {
-      to: Assertion
-      toSuceed: Assertion
-      toFail: Assertion
+      ok: Assertion
+      err: Assertion
     }) => void) => {
       it(input, () => {
         try {
           fn(tester.expectRun(input))
         }
         catch (err) {
-          if (! (err instanceof Error)) throw new Error(String(err))
+          if (! (err instanceof Error)) throw Error(String(err))
           throw err
         }
       })
@@ -44,156 +37,103 @@ const testParser = (parser: Parser) => {
 describe('Combinator tests', () => {
   describe(`char('a')`, () => {
     const { itRun } = testParser(p.char('a'))
-    itRun('a', a => a.to.deep.equal({ val: 'a', rest: '' }))
-    itRun('abc', a => a.to.deep.equal({ val: 'a', rest: 'bc' }))
+    itRun('a', a => a.ok.to.deep.equal('a'))
+    itRun('abc', a => a.ok.to.deep.equal('a'))
   })
 
   describe(`satisfy(ch => ch === 'a' || ch === 'b')`, () => {
     const { itRun } = testParser(p.satisfiy(ch => ch === 'a' || ch === 'b'))
-    itRun('ac', a => a.to.deep.equal({ val: 'a', rest: 'c' }))
-    itRun('bc', a => a.to.deep.equal({ val: 'b', rest: 'c' }))
-    itRun('cc', a => a.toFail)
+    itRun('ac', a => a.ok.to.deep.equal('a'))
+    itRun('bc', a => a.ok.to.deep.equal('b'))
+    itRun('cc', a => a.err)
   })
 
   describe(`many(char('a'))`, () => {
     const { itRun } = testParser(p.many(p.char('a')))
-    itRun('aaa', a => a.toSuceed.and.to.deep.equal([ ...'aaa' ]))
-    itRun('aab', a => a.toSuceed.and.to.deep.equal([ ...'aa' ]))
-    itRun('bbb', a => a.toSuceed.and.to.deep.equal([]))
+    itRun('aaa', a => a.ok.to.deep.equal([ ...'aaa' ]))
+    itRun('aab', a => a.ok.to.deep.equal([ ...'aa' ]))
+    itRun('bbb', a => a.ok.to.deep.equal([]))
   })
 
   describe(`join(many(char('a')))`, () => {
     const { itRun } = testParser(p.join(p.many(p.char('a'))))
-    itRun('aaa', a => a.toSuceed.and.to.equal('aaa'))
-    itRun('aab', a => a.toSuceed.and.to.equal('aa'))
-    itRun('bbb', a => a.toSuceed.and.to.equal(''))
+    itRun('aaa', a => a.ok.to.equal('aaa'))
+    itRun('aab', a => a.ok.to.equal('aa'))
+    itRun('bbb', a => a.ok.to.equal(''))
   })
 
   describe(`join(some(char('a')))`, () => {
     const { itRun } = testParser(p.join(p.some(p.char('a'))))
-    itRun('aaa', a => a.toSuceed.and.to.equal('aaa'))
-    itRun('aab', a => a.toSuceed.and.to.equal('aa'))
-    itRun('bbb', a => a.toFail)
+    itRun('aaa', a => a.ok.to.equal('aaa'))
+    itRun('aab', a => a.ok.to.equal('aa'))
+    itRun('bbb', a => a.err)
   })
 
   describe(`str('abc')`, () => {
     const { itRun } = testParser(p.str('abc'))
-    itRun('abc', a => a.toSuceed.deep.equal('abc'))
-    itRun('abcdef', a => a.to.deep.equal({ val: 'abc', rest: 'def' }))
-    itRun('abd', a => a.toFail)
+    itRun('abc', a => a.ok.to.deep.equal('abc'))
+    itRun('abcdef', a => a.ok.to.deep.equal('abc'))
+    itRun('abd', a => a.err)
   })
 
-  describe(`map(seq([ char('<'), number, char('>') ]), ([, n ]) => n)`, () => {
-    const { itRun } = testParser(p.map(p.seq([ p.char('<'), p.number, p.char('>') ]), ([, n ]) => n))
-    itRun('<123>', a => a.toSuceed.and.to.equal(123))
-    itRun('<123', a => a.toFail)
+  describe(`map(seq([ char('<'), integer, char('>') ]), ([, n ]) => n)`, () => {
+    const { itRun } = testParser(p.map(p.seq([ p.char('<'), p.integer, p.char('>') ]), ([, n ]) => n))
+    itRun('<123>', a => a.ok.to.equal(123))
+    itRun('<123', a => a.err)
   })
 
   describe(`(
     P.then(P.char('<'), () =>
-    P.then(P.number, n =>
+    P.then(p.integer, n =>
     P.then(P.char('>'), () =>
     P.return(n))))
   )`, () => {
     const { itRun } = testParser(
-      p.then(p.char('<'), () =>
-      p.then(p.number, n =>
-      p.then(p.char('>'), () =>
+      p.bind(p.char('<'), () =>
+      p.bind(p.integer, n =>
+      p.bind(p.char('>'), () =>
       p.return(n))))
     )
-    itRun('<123>', a => a.toSuceed.and.to.equal(123))
-    itRun('<123', a => a.toFail)
+    itRun('<123>', a => a.ok.to.equal(123))
+    itRun('<123', a => a.err)
   })
 
-  describe(`head(fseq([ ignore(char('<')), number, ignore(char('>')) ]))`, () => {
-    const { itRun } = testParser(p.head(p.fseq([ p.ignore(p.char('<')), p.number, p.ignore(p.char('>')) ])))
-    itRun('<123>', a => a.toSuceed.and.to.equal(123))
-    itRun('<123', a => a.toFail)
+  describe(`right(char('<'))(left(char('>')(integer)))`, () => {
+    const { itRun } = testParser(p.right(p.char('<'))(p.left(p.char('>'))(p.integer)))
+    itRun('<123>', a => a.ok.to.deep.equal(123)),
+    itRun('<123', a => a.err)
   })
 
-  describe(`right(char('<'), left(number, char('>')))`, () => {
-    const { itRun } = testParser(p.right(p.char('<'), p.left(p.number, p.char('>'))))
-    itRun('<123>', a => a.to.deep.equal({ val: 123,  rest: '' }))
-    itRun('<123', a => a.toFail)
-  })
-
-  describe(`followedBy(str('abc'), surWhite(str('->')))`, () => {
+  describe(`followedBy(str('abc'), spaced(str('->')))`, () => {
     const { itRun } = testParser(p.followedBy(p.str('abc'), p.spaced(p.str('->'))))
-    itRun('abc -> def', a => a.to.deep.equal({ val: 'abc', rest: ' -> def' }))
-    itRun('abc', a => a.toFail)
+    itRun('abc -> def', a => a.ok.to.deep.equal('abc'))
+    itRun('abc', a => a.err)
   })
 
-  describe(`notFollowedBy(str('abc'), surWhite(str('->')))`, () => {
+  describe(`notFollowedBy(str('abc'), spaced(str('->')))`, () => {
     const { itRun } = testParser(p.notFollowedBy(p.str('abc'), p.spaced(p.str('->'))))
-    itRun('abc -> def', a => a.toFail)
-    itRun('abcdef', a => a.to.deep.equal({ val: 'abc', rest: 'def' }))
-  })
-
-  describe(`until(str(';;'))`, () => {
-    const { itRun } = testParser(p.until(p.str(';;')))
-    itRun('abc;;', a => a.to.deep.equal({ val: [ 'abc', ';;' ], rest: ';;' }))
-    itRun('abc; def;; ghi', a => a.to.deep.equal({ val: [ 'abc; def', ';;' ], rest: ';; ghi' }))
-    itRun('abc;', a => a.toFail)
-  })
-
-  describe(`until(alt([ char(';'), eoi ]))`, () => {
-    const { itRun } = testParser(p.until(p.alt([ p.char(';'), p.eoi ])))
-    itRun('abc; def', a => a.to.deep.equal({ val: [ 'abc', ';' ], rest: '; def' }))
-    itRun('abc def', a => a.to.deep.equal({ val: [ 'abc def', null ], rest: '' }))
+    itRun('abc -> def', a => a.err)
+    itRun('abcdef', a => a.ok.to.deep.equal('abc'))
   })
 
   describe(`eoi`, () => {
     const { itRun } = testParser(p.eoi)
-    itRun('', a => a.toSuceed)
-    itRun('a', a => a.toFail)
+    itRun('', a => a.ok)
+    itRun('a', a => a.err)
   })
 
   describe(`ended(join(many(char('a'))))`, () => {
     const { itRun } = testParser(p.ended(p.join(p.many(p.char('a')))))
-    itRun('', a => a.toSuceed.and.to.equal(''))
-    itRun('aaa', a => a.toSuceed.and.to.equal('aaa'))
-    itRun('aaab', a => a.toFail)
+    itRun('', a => a.ok.to.equal(''))
+    itRun('aaa', a => a.ok.to.equal('aaa'))
+    itRun('aaab', a => a.err)
   })
 
-  describe(`sequence([ optional(number), char('d'), number ])`, () => {
-    const { itRun } = testParser(p.sequence([ p.optional(p.number), p.char('d'), p.number ]))
-    itRun('d123', a => a.to.deep.equal({ val: [ null, 'd', 123 ], rest: '' }))
-    itRun('123d456', a => a.to.deep.equal({ val: [ 123, 'd', 456 ], rest: '' }))
-    itRun('d', a => a.toFail)
-    itRun('123', a => a.toFail)
+  describe(`sequence([ optional(integer), char('d'), integer ])`, () => {
+    const { itRun } = testParser(p.sequence([ p.optional(p.integer), p.char('d'), p.integer ]))
+    itRun('d123', a => a.ok.to.deep.equal([ null, 'd', 123 ]))
+    itRun('123d456', a => a.ok.to.deep.equal([ 123, 'd', 456 ]))
+    itRun('d', a => a.err)
+    itRun('123', a => a.err)
   })
-
-  describe(`many(notEmpty(alt([ char(','), head(until(alt([ eoi, char(',') ]))) ])))`, () => {
-    const { itRun } = testParser(
-      p.many(p.notEmpty(
-        p.alt([
-          p.char(','),
-          p.head(p.until(p.alt([ p.eoi, p.char(',') ])))
-        ])
-      ))
-    )
-    itRun('x,y,z', a => a.toSuceed.and.to.deep.equal([ 'x', ',', 'y', ',', 'z' ]))
-  })
-})
-
-describe('Expression calculator tests', () => {
-  const { expectRun } = testParser(p.mapErr(p.ended(exprCalculator), err => {
-    if (Err.is('ExpectEnd', err)) return `Expect end of input, got '${err.rest}'`
-  }))
-  const itEval = (exprStr: string) => {
-    const ans = eval(exprStr)
-    it(`${exprStr} = ${ans}`, () => {
-      expectRun(exprStr).toSuceed.and.to.be.equal(ans)
-    })
-  }
-
-  itEval('1')
-  itEval('(1)')
-  itEval('1+1')
-  itEval('1 + 1')
-  itEval('1 + 2 + 3')
-  itEval('1 + 2 - 3')
-  itEval('1 + 2 * 3')
-  itEval('(1 + 2) * 3')
-  itEval('(1 + 2 * 3 ** (4 - 5)) / 6')
 })

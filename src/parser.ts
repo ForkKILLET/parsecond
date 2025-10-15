@@ -111,6 +111,16 @@ export const bindValState = <T, E, Tn, En>(
 ) => Parser<Tn, En>): Parser<Tn, E | En> =>
   state => parser(state).bind(({ val, state }) => next({ val, state })(state))
 
+export const match = <T, E, To, Eo, Te, Ee>(
+  parser: Parser<T, E>,
+  onOk: (val: T) => Parser<To, Eo>,
+  onErr: (err: E) => Parser<Te, Ee>,
+): Parser<To | Te, Eo | Ee> =>
+  state => parser(state).match(
+    ({ val, state }) => onOk(val)(state),
+    err => onErr(err)(state)
+  )
+
 export const optional = <T, E>(parser: Parser<T, E>): Parser<T | null, never> => state =>
   parser(state).bindErr(() => Ok({ val: null, state }))
 
@@ -191,43 +201,37 @@ export const followedBy = <T, E1, E2>(parser: Parser<T, E1>, follower: Parser<an
   bind(parser, val => map(follower, () => val))
 
 export const notFollowedBy = <T, E>(parser: Parser<T, E>, follower: Parser): Parser<T, E | null> =>
-  bind(parser, val => bind(bindErr(follower, () => pure(val)), () => fail(null)))
+  bind(parser, val => match(follower, () => fail(null), () => pure(val)))
 
 export const notEmpty = <T extends string, E>(parser: Parser<T, E>): Parser<T, E | null> =>
   bind(parser, s => s ? pure(s) : fail(null))
 
 export type Range = {
-  input: string
   start: number
   end: number
 }
 export namespace Range {
   export const startOf = (range: Range): Range => ({
-    input: range.input,
     start: range.start,
     end: range.start,
   })
 
   export const endOf = (range: Range): Range => ({
-    input: range.input,
     start: range.end,
     end: range.end,
   })
 
   export const outer = (start: Range, end: Range): Range => ({
-    input: start.input,
     start: start.start,
     end: end.end,
   })
 
   export const inner = (start: Range, end: Range): Range => ({
-    input: start.input,
     start: start.end,
     end: end.start,
   })
 
   export const empty = (): Range => ({
-    input: '',
     start: 1,
     end: 0,
   })
@@ -243,7 +247,6 @@ export const ranged = <T, E>(parser: Parser<T, E>): Parser<Ranged<T>, E> =>
     val: {
       val,
       range: {
-        input: oldState.input,
         start: oldState.index,
         end: state.index,
       }
